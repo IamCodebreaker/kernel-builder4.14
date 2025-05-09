@@ -31,6 +31,10 @@ jobs:
           git clone --depth=1 ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} kernel-source
           echo "KERNEL_VERSION=$(sed -n 's/.*CONFIG_LOCALVERSION=\"\([^\"]*\)\".*/\1/p' kernel-source/arch/arm64/configs/${{ env.KERNEL_TARGET }}_defconfig | sed 's/^\\.//')" >> $GITHUB_ENV
 
+      - name: Clean kernel source tree
+        run: |
+          make -C kernel-source mrproper
+
       - name: Build kernel
         run: |
           export KBUILD_BUILD_USER="BUGGY"
