@@ -1,4 +1,4 @@
-name: BUGGY KERNEL
+name: AENA's
 
 on:
   workflow_dispatch:
