@@ -1,4 +1,4 @@
-name: AENA's
+name: AENA’s
 
 on:
   workflow_dispatch:
@@ -9,9 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup environment (case‐insensitive)
+      - name: Setup environment (case-insensitive)
         run: |
-          # load config.env keys without regard to case
           echo "ANYKERNEL_SOURCE=$(grep -i -w ANYKERNEL_SOURCE config.env | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "ANYKERNEL_SOURCE_BRANCH=$(grep -i -w ANYKERNEL_SOURCE_BRANCH config.env | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "KERNEL_SOURCE=$(grep -i -w KERNEL_SOURCE config.env | cut -d '=' -f2)" >> $GITHUB_ENV
@@ -36,6 +35,17 @@ jobs:
         run: |
           make -C kernel-source mrproper
 
+      - name: Lower-case netfilter_ipv4 headers
+        run: |
+          # ensure the directory exists
+          if [ -d kernel-source/include/linux/netfilter_ipv4 ]; then
+            # walk depth-first so nested files/dirs are renamed first
+            find kernel-source/include/linux/netfilter_ipv4 -depth | while read src; do
+              dst="$(dirname "$src")/$(basename "$src" | tr '[:upper:]' '[:lower:]')"
+              [ "$src" != "$dst" ] && mv "$src" "$dst"
+            done
+          fi
+
       - name: Build kernel
         run: |
           export KBUILD_BUILD_USER="BUGGY"
@@ -57,19 +67,19 @@ jobs:
                CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android- \
                CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
 
-      - name: Package kernel (case‐insensitive filenames)
+      - name: Package kernel (case-insensitive filenames)
         run: |
           shopt -s nocaseglob
           git clone --depth=1 ${{ env.ANYKERNEL_SOURCE }} -b ${{ env.ANYKERNEL_SOURCE_BRANCH }} AnyKernel3
           rm -rf AnyKernel3/.git AnyKernel3/.github AnyKernel3/LICENSE AnyKernel3/README.md
-          # pick whichever boot image exists, regardless of case
-          for pattern in out/arch/arm64/boot/Image*; do
-            if [[ -f $pattern ]]; then
-              cp "$pattern" AnyKernel3/$(basename "$pattern")
+          # copy the first matching Image* file
+          for img in out/arch/arm64/boot/Image*; do
+            if [[ -f $img ]]; then
+              cp "$img" AnyKernel3/$(basename "$img")
               break
             fi
           done
-          # dtbo
+          # copy dtbo.*
           for dt in out/arch/arm64/boot/dtbo.*; do
             [[ -f $dt ]] && cp "$dt" AnyKernel3/$(basename "$dt") && break
           done
